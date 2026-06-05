@@ -25,9 +25,13 @@ public class TariffService {
     public Tariff create(TariffRequest request) {
         validateTariffRequest(request);
 
-        int nextVersion = tariffRepository.findTopByUtilityTypeOrderByVersionDesc(request.getUtilityType())
-                .map(t -> t.getVersion() + 1)
-                .orElse(1);
+        LocalDate today = LocalDate.now();
+        var existingLatest = tariffRepository.findTopByUtilityTypeOrderByVersionDesc(request.getUtilityType());
+        int nextVersion = existingLatest.map(t -> t.getVersion() + 1).orElse(1);
+
+        if (existingLatest.isPresent() && !request.getEffectiveFrom().isAfter(today)) {
+            throw new BusinessException("New tariff versions must have an effective date in the future");
+        }
 
         tariffRepository.findApplicableTariffs(request.getUtilityType(), request.getEffectiveFrom())
                 .stream()

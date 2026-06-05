@@ -13,6 +13,7 @@ import vector.UtilityBillingMS.model.enums.Role;
 import vector.UtilityBillingMS.model.enums.UserStatus;
 import vector.UtilityBillingMS.repositories.CustomerRepository;
 import vector.UtilityBillingMS.repositories.UserRepository;
+import vector.UtilityBillingMS.validation.PasswordValidator;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -23,12 +24,18 @@ import java.util.List;
 public class CustomerService {
 
     private final CustomerRepository customerRepository;
-    private final UserRepository  userRepository;
+    private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PasswordValidator passwordValidator = new PasswordValidator();
 
     public Customer create(CustomerRequest request) {
+        validatePassword(request.getPassword(), true);
+
         if (customerRepository.existsByNationalId(request.getNationalId())) {
             throw new BusinessException("National ID already exists: " + request.getNationalId());
+        }
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new BusinessException("Email already taken: " + request.getEmail());
         }
 
         User user = User.builder()
@@ -42,18 +49,19 @@ public class CustomerService {
                 .role(Role.CUSTOMER)
                 .build();
         userRepository.saveAndFlush(user);
+
         Customer customer = Customer.builder()
                 .fullName(request.getFullName())
                 .nationalId(request.getNationalId())
-                .user(user)
                 .address(request.getAddress())
                 .phoneNumber(request.getPhoneNumber())
                 .status(request.getStatus() != null ? request.getStatus() : EntityStatus.ACTIVE)
                 .build();
         customerRepository.saveAndFlush(customer);
+
         user.setCustomer(customer);
         userRepository.saveAndFlush(user);
-        return customerRepository.saveAndFlush(customer);
+        return customer;
     }
 
     public List<Customer> findAll() {
@@ -67,43 +75,70 @@ public class CustomerService {
 
     public Customer update(Long id, CustomerRequest request) {
         Customer customer = findById(id);
-
+        User user = customer.getUser();
+        if (user == null) {
+            throw new BusinessException("No user account linked to this customer");
+        }
 
         if (!customer.getNationalId().equals(request.getNationalId())
                 && customerRepository.existsByNationalId(request.getNationalId())) {
             throw new BusinessException("National ID already exists: " + request.getNationalId());
         }
+        if (!user.getEmail().equals(request.getEmail()) && userRepository.existsByEmail(request.getEmail())) {
+            throw new BusinessException("Email already taken: " + request.getEmail());
+        }
+
         customer.setFullName(request.getFullName());
         customer.setNationalId(request.getNationalId());
+        customer.setAddress(request.getAddress());
         customer.setPhoneNumber(request.getPhoneNumber());
         if (request.getStatus() != null) {
             customer.setStatus(request.getStatus());
+            user.setStatus(mapToUserStatus(request.getStatus()));
         }
 
-        User user = customer.getUser();
         user.setFullName(request.getFullName());
         user.setPhoneNumber(request.getPhoneNumber());
         user.setEmail(request.getEmail());
         user.setNationalId(request.getNationalId());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole(Role.CUSTOMER);
-        user.setStatus(Enum.valueOf(UserStatus.class, request.getStatus().name()));
+
+        if (request.getPassword() != null && !request.getPassword().isBlank()) {
+            validatePassword(request.getPassword(), true);
+            user.setPassword(passwordEncoder.encode(request.getPassword()));
+        }
+
         userRepository.save(user);
-
-
         return customerRepository.save(customer);
     }
 
     public void delete(Long id) {
-        if (!customerRepository.existsById(id)) {
-            throw new BusinessException("Customer not found with id: " + id);
+        Customer customer = findById(id);
+        User user = customer.getUser();
+        customerRepository.delete(customer);
+        if (user != null) {
+            userRepository.delete(user);
         }
-        customerRepository.deleteById(id);
     }
 
     public void ensureActive(Customer customer) {
         if (customer.getStatus() != EntityStatus.ACTIVE) {
             throw new BusinessException("Customer is inactive and cannot be used");
         }
+    }
+
+    private void validatePassword(String password, boolean required) {
+        if (password == null || password.isBlank()) {
+            if (required) {
+                throw new BusinessException("Password is required");
+            }
+            return;
+        }
+        if (!passwordValidator.isValid(password, null)) {
+            throw new BusinessException("Password must be at least 8 characters with uppercase, lowercase, number and special character");
+        }
+    }
+
+    private UserStatus mapToUserStatus(EntityStatus status) {
+        return status == EntityStatus.ACTIVE ? UserStatus.ACTIVE : UserStatus.INACTIVE;
     }
 }

@@ -9,7 +9,6 @@ import org.springframework.format.annotation.NumberFormat;
 import vector.UtilityBillingMS.model.enums.EntityStatus;
 import vector.UtilityBillingMS.model.enums.UserStatus;
 import vector.UtilityBillingMS.validation.RwandaPhone;
-import vector.UtilityBillingMS.validation.ValidPassword;
 
 @Data
 public class CustomerRequest {
@@ -29,7 +28,6 @@ public class CustomerRequest {
     @NotBlank(message = "Phone number is required")
     @RwandaPhone
     private String phoneNumber;
-    @ValidPassword
     private String password;
 
     @NotBlank(message = "Email is required")
