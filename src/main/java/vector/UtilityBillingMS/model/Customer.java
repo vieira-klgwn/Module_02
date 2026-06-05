@@ -2,6 +2,7 @@ package vector.UtilityBillingMS.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import vector.UtilityBillingMS.model.enums.EntityStatus;
 
@@ -26,6 +27,9 @@ public class Customer {
     @Column(nullable = false, unique = true)
     private String nationalId;
 
+    @NotNull
+    private String address;
+
     @Column(nullable = false)
     private String phoneNumber;
 
@@ -40,7 +44,7 @@ public class Customer {
     @Builder.Default
     private List<Meter> meters = new ArrayList<>();
 
-    @OneToOne(mappedBy = "customer")
+    @OneToOne(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
     private User user;
 

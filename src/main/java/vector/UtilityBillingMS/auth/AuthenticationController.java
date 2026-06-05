@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import vector.UtilityBillingMS.model.Token;
+import vector.UtilityBillingMS.model.enums.Role;
 import vector.UtilityBillingMS.repositories.TokenRepository;
 
 import java.io.IOException;
@@ -26,8 +27,32 @@ public class AuthenticationController {
     @PostMapping("/register")
     public ResponseEntity<AuthenticationResponse> register(@Valid @RequestBody RegisterRequest registerRequest) {
         logger.debug("Register request for email: {}", registerRequest.getEmail());
+        registerRequest.setRole(Role.CUSTOMER);
         return ResponseEntity.ok(authenticationService.register(registerRequest));
     }
+
+    @PostMapping("/register/admin")
+    public ResponseEntity<AuthenticationResponse> registerAdmin(@Valid @RequestBody RegisterRequest registerRequest) {
+        logger.debug("Register request for email: {}", registerRequest.getEmail());
+        registerRequest.setRole(Role.ADMIN);
+        return ResponseEntity.ok(authenticationService.register(registerRequest));
+    }
+
+    @PostMapping("/register/operator")
+    public ResponseEntity<AuthenticationResponse> registerOperator(@Valid @RequestBody RegisterRequest registerRequest) {
+        logger.debug("Register request for email: {}", registerRequest.getEmail());
+        registerRequest.setRole(Role.OPERATOR);
+        return ResponseEntity.ok(authenticationService.register(registerRequest));
+    }
+
+    @PostMapping("/register/finance")
+    public ResponseEntity<AuthenticationResponse> registerFinance(@Valid @RequestBody RegisterRequest registerRequest) {
+        logger.debug("Register request for email: {}", registerRequest.getEmail());
+        registerRequest.setRole(Role.FINANCE);
+        return ResponseEntity.ok(authenticationService.register(registerRequest));
+    }
+
+
 
     @PostMapping("/login")
     public ResponseEntity<AuthenticationResponse> authenticate(@Valid @RequestBody AuthenticationRequest request) {

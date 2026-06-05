@@ -20,7 +20,7 @@ public class CustomerController {
     private final CustomerService customerService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'OPERATOR')")
+    @PreAuthorize("hasAnyRole('ADMIN')")
     public ResponseEntity<Customer> create(@Valid @RequestBody CustomerRequest request) {
         return new ResponseEntity<>(customerService.create(request), HttpStatus.CREATED);
     }

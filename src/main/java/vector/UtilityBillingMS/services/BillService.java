@@ -85,8 +85,10 @@ public class BillService {
     }
 
     public List<Bill> findAll() {
+
         return billRepository.findAll();
     }
+
 
     public Bill findById(Long id) {
         return billRepository.findById(id)

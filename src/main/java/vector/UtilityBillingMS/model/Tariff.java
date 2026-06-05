@@ -1,6 +1,7 @@
 package vector.UtilityBillingMS.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 import vector.UtilityBillingMS.model.enums.MeterType;
 import vector.UtilityBillingMS.model.enums.TariffType;
@@ -23,6 +24,7 @@ public class Tariff {
     private Long id;
 
     @Column(nullable = false)
+    @NotBlank
     private String name;
 
     @Enumerated(EnumType.STRING)

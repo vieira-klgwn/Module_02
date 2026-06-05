@@ -10,11 +10,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import vector.UtilityBillingMS.config.JwtService;
 import vector.UtilityBillingMS.exceptions.BusinessException;
+import vector.UtilityBillingMS.model.Customer;
 import vector.UtilityBillingMS.model.Token;
 import vector.UtilityBillingMS.model.User;
 import vector.UtilityBillingMS.model.enums.Role;
 import vector.UtilityBillingMS.model.enums.TokenType;
 import vector.UtilityBillingMS.model.enums.UserStatus;
+import vector.UtilityBillingMS.repositories.CustomerRepository;
 import vector.UtilityBillingMS.repositories.TokenRepository;
 import vector.UtilityBillingMS.repositories.UserRepository;
 
@@ -31,6 +33,7 @@ public class AuthenticationService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private static final Logger logger = Logger.getLogger(AuthenticationService.class.getName());
+    private final CustomerRepository customerRepository;
 
     public AuthenticationResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
@@ -45,11 +48,21 @@ public class AuthenticationService {
                 .email(request.getEmail())
                 .phoneNumber(request.getPhoneNumber())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .role(Role.CUSTOMER)
                 .status(UserStatus.ACTIVE)
+                .nationalId(request.getNationalId())
+                .role(request.getRole() != null ? request.getRole() : Role.CUSTOMER)
                 .createdAt(LocalDateTime.now())
                 .build();
         var savedUser = userRepository.save(user);
+
+        var customer = new Customer();
+        customer.setUser(savedUser);
+        customer.setPhoneNumber(request.getPhoneNumber());
+        customer.setNationalId(request.getNationalId());
+        customer.setFullName(request.getFullName());
+        customerRepository.saveAndFlush(customer);
+        savedUser.setCustomer(customer);
+
 
         var token = jwtService.generateToken(user);
         var refreshToken = jwtService.generateRefreshToken(user);

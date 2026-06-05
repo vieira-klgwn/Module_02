@@ -6,10 +6,10 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
-import vector.UtilityBillingMS.exceptions.BusinessException;
 
 @Service
 @RequiredArgsConstructor
@@ -20,24 +20,32 @@ public class EmailService {
     private final JavaMailSender mailSender;
 
     @Value("${spring.mail.from}")
-    private String fromAddress;
+    private String fromEmail;
 
     @Value("${app.notification.test-recipient:klgwnboy@gmail.com}")
     private String testRecipient;
 
-    public void sendNotificationEmail(String subject, String plainTextMessage) {
+    /**
+     * Sends notification email. Returns true on success, false on failure (never throws).
+     */
+    public boolean sendNotificationEmail(String subject, String plainTextMessage) {
+        return sendHtmlEmail(testRecipient, subject, formatHtmlBody(plainTextMessage));
+    }
+
+    public boolean sendHtmlEmail(String to, String subject, String htmlBody) {
         try {
-            MimeMessage mimeMessage = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
-            helper.setFrom(fromAddress);
-            helper.setTo(testRecipient);
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(fromEmail);
+            helper.setTo(to);
             helper.setSubject(subject);
-            helper.setText(formatHtmlBody(plainTextMessage), true);
-            mailSender.send(mimeMessage);
-            logger.info("Notification email sent to {} | subject: {}", testRecipient, subject);
-        } catch (MessagingException e) {
-            logger.error("Failed to send notification email to {}: {}", testRecipient, e.getMessage());
-            throw new BusinessException("Failed to send notification email: " + e.getMessage());
+            helper.setText(htmlBody, true);
+            mailSender.send(message);
+            logger.info("Email sent to {} | subject: {}", to, subject);
+            return true;
+        } catch (MessagingException | MailException e) {
+            logger.error("Failed to send email to {} | subject: {} | error: {}", to, subject, e.getMessage());
+            return false;
         }
     }
 

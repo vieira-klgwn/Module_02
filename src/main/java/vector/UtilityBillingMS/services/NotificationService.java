@@ -25,9 +25,8 @@ public class NotificationService {
         String monthYear = formatMonthYear(bill.getBillingMonth(), bill.getBillingYear());
         String message = buildBillProcessedMessage(customer.getFullName(), monthYear, bill.getTotalAmount());
 
-        Notification notification = saveAndEmail(customer, bill.getId(), "BILL",
+        return saveAndEmail(customer, bill.getId(), "BILL",
                 "Utility Bill - " + monthYear, message);
-        return notification;
     }
 
     public Notification createPaymentNotification(Customer customer, Bill bill, BigDecimal amountPaid, boolean fullyPaid) {
@@ -67,15 +66,17 @@ public class NotificationService {
                 .customer(customer)
                 .subject(subject)
                 .message(message)
-                .status(NotificationStatus.SENT)
+                .status(NotificationStatus.PENDING)
                 .referenceType(referenceType)
                 .referenceId(referenceId)
                 .recipientEmail(emailService.getTestRecipient())
                 .build();
 
         Notification saved = notificationRepository.save(notification);
-        emailService.sendNotificationEmail(subject, message);
-        return saved;
+
+        boolean emailSent = emailService.sendNotificationEmail(subject, message);
+        saved.setStatus(emailSent ? NotificationStatus.SENT : NotificationStatus.FAILED);
+        return notificationRepository.save(saved);
     }
 
     private String formatMonthYear(int month, int year) {
