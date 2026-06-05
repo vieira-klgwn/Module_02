@@ -65,7 +65,9 @@ public class PaymentService {
         }
 
         billRepository.save(bill);
-        notificationService.createPaymentNotification(bill.getCustomer(), bill, request.getAmountPaid());
+        boolean fullyPaid = newBalance.compareTo(BigDecimal.ZERO) == 0;
+        notificationService.createPaymentNotification(
+                bill.getCustomer(), bill, request.getAmountPaid(), fullyPaid);
         return payment;
     }
 

@@ -19,48 +19,67 @@ import java.util.Locale;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final EmailService emailService;
 
     public Notification createBillNotification(Customer customer, Bill bill) {
-        String monthYear = Month.of(bill.getBillingMonth())
-                .getDisplayName(TextStyle.FULL, Locale.ENGLISH) + "/" + bill.getBillingYear();
-        String message = String.format(
-                "Dear %s%n%nYour %s utility bill of %s FRW has been successfully processed",
-                customer.getFullName(),
-                monthYear,
-                bill.getTotalAmount().stripTrailingZeros().toPlainString()
-        );
+        String monthYear = formatMonthYear(bill.getBillingMonth(), bill.getBillingYear());
+        String message = buildBillProcessedMessage(customer.getFullName(), monthYear, bill.getTotalAmount());
 
-        Notification notification = Notification.builder()
-                .customer(customer)
-                .subject("Utility Bill - " + monthYear)
-                .message(message)
-                .status(NotificationStatus.SENT)
-                .referenceType("BILL")
-                .referenceId(bill.getId())
-                .build();
-        return notificationRepository.save(notification);
+        Notification notification = saveAndEmail(customer, bill.getId(), "BILL",
+                "Utility Bill - " + monthYear, message);
+        return notification;
     }
 
-    public Notification createPaymentNotification(Customer customer, Bill bill, BigDecimal amountPaid) {
-        String monthYear = Month.of(bill.getBillingMonth())
-                .getDisplayName(TextStyle.FULL, Locale.ENGLISH) + "/" + bill.getBillingYear();
-        String message = String.format(
-                "Dear %s%n%nYour payment of %s FRW for %s utility bill has been received. Remaining balance: %s FRW",
-                customer.getFullName(),
-                amountPaid.stripTrailingZeros().toPlainString(),
-                monthYear,
-                bill.getRemainingBalance().stripTrailingZeros().toPlainString()
-        );
+    public Notification createPaymentNotification(Customer customer, Bill bill, BigDecimal amountPaid, boolean fullyPaid) {
+        String monthYear = formatMonthYear(bill.getBillingMonth(), bill.getBillingYear());
+        String message;
+        String subject;
 
+        if (fullyPaid) {
+            message = buildBillProcessedMessage(customer.getFullName(), monthYear, bill.getTotalAmount());
+            subject = "Bill Paid - " + monthYear;
+        } else {
+            message = String.format(
+                    "Dear %s%n%nYour payment of %s FRW for %s utility bill has been received. Remaining balance: %s FRW",
+                    customer.getFullName(),
+                    amountPaid.stripTrailingZeros().toPlainString(),
+                    monthYear,
+                    bill.getRemainingBalance().stripTrailingZeros().toPlainString()
+            );
+            subject = "Payment Received - " + monthYear;
+        }
+
+        return saveAndEmail(customer, bill.getId(), "PAYMENT", subject, message);
+    }
+
+    public String buildBillProcessedMessage(String customerName, String monthYear, BigDecimal amount) {
+        return String.format(
+                "Dear %s%n%nYour %s utility bill of %s FRW has been successfully processed",
+                customerName,
+                monthYear,
+                amount.stripTrailingZeros().toPlainString()
+        );
+    }
+
+    private Notification saveAndEmail(Customer customer, Long referenceId, String referenceType,
+                                      String subject, String message) {
         Notification notification = Notification.builder()
                 .customer(customer)
-                .subject("Payment Received - " + monthYear)
+                .subject(subject)
                 .message(message)
                 .status(NotificationStatus.SENT)
-                .referenceType("PAYMENT")
-                .referenceId(bill.getId())
+                .referenceType(referenceType)
+                .referenceId(referenceId)
+                .recipientEmail(emailService.getTestRecipient())
                 .build();
-        return notificationRepository.save(notification);
+
+        Notification saved = notificationRepository.save(notification);
+        emailService.sendNotificationEmail(subject, message);
+        return saved;
+    }
+
+    private String formatMonthYear(int month, int year) {
+        return Month.of(month).getDisplayName(TextStyle.FULL, Locale.ENGLISH) + "/" + year;
     }
 
     public List<Notification> findByCustomerId(Long customerId) {

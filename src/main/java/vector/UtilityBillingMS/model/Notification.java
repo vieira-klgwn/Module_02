@@ -40,6 +40,9 @@ public class Notification {
     @Column(name = "reference_id")
     private Long referenceId;
 
+    @Column(name = "recipient_email")
+    private String recipientEmail;
+
     private LocalDateTime createdAt;
 
     @PrePersist
