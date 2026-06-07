@@ -24,6 +24,7 @@ public class PaymentService {
     private final BillService billService;
     private final NotificationService notificationService;
     private final CustomerService customerService;
+    private final CustomerAccessService customerAccessService;
 
     @Transactional
     public Payment recordPayment(PaymentRequest request, User financeUser) {
@@ -83,12 +84,31 @@ public class PaymentService {
         return paymentRepository.findAll();
     }
 
+    public List<Payment> findAllForUser(User user) {
+        if (customerAccessService.isCustomer(user)) {
+            return paymentRepository.findByCustomerId(customerAccessService.resolveCustomerId(user));
+        }
+        return findAll();
+    }
+
     public List<Payment> findByBillReference(String billReference) {
         return paymentRepository.findByBillReference(billReference);
+    }
+
+    public List<Payment> findByBillReferenceForUser(String billReference, User user) {
+        Bill bill = billService.findByReferenceForUser(billReference, user);
+        return paymentRepository.findByBillReference(bill.getBillReference());
     }
 
     public Payment findById(Long id) {
         return paymentRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("Payment not found with id: " + id));
+    }
+
+    public Payment findByIdForUser(Long id, User user) {
+        Payment payment = paymentRepository.findByIdWithBill(id)
+                .orElseThrow(() -> new BusinessException("Payment not found with id: " + id));
+        customerAccessService.ensureOwnBill(user, payment.getBill());
+        return payment;
     }
 }

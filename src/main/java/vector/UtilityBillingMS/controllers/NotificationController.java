@@ -3,8 +3,10 @@ package vector.UtilityBillingMS.controllers;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import vector.UtilityBillingMS.model.Notification;
+import vector.UtilityBillingMS.model.User;
 import vector.UtilityBillingMS.services.NotificationService;
 
 import java.util.List;
@@ -24,7 +26,9 @@ public class NotificationController {
 
     @GetMapping("/customer/{customerId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'CUSTOMER')")
-    public ResponseEntity<List<Notification>> findByCustomer(@PathVariable Long customerId) {
-        return ResponseEntity.ok(notificationService.findByCustomerId(customerId));
+    public ResponseEntity<List<Notification>> findByCustomer(
+            @PathVariable Long customerId,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(notificationService.findByCustomerIdForUser(customerId, user));
     }
 }

@@ -52,6 +52,26 @@ C=$(code -X POST "$BASE/api/customers" -H "Authorization: Bearer $ADMIN_TOKEN" -
 C=$(code -X POST "$BASE/api/customers" -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" -d "$CUST_BODY")
 [[ "$C" == "400" ]] && ok "Duplicate national ID rejected" || bad "Dup NID" "$(cat /tmp/resp.json)"
 
+log "CUSTOMER DATA ISOLATION"
+# Create second customer
+NID2=$(printf '1%015d' $(((TS + 1) % 1000000000000000)))
+PHONE2="07$(printf '%08d' $(((TS + 1) % 100000000)))"
+EMAIL2="cust2$TS@test.rw"
+C=$(code -X POST "$BASE/api/customers" -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" -d "{\"fullName\":\"Other Cust\",\"nationalId\":\"$NID2\",\"address\":\"Musanze\",\"phoneNumber\":\"$PHONE2\",\"email\":\"$EMAIL2\",\"password\":\"Customer@1\"}")
+CUSTOMER2_ID=$(cat /tmp/resp.json | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+C=$(code "$BASE/api/bills/customer/$CUSTOMER2_ID" -H "Authorization: Bearer $CUST_TOKEN")
+[[ "$C" == "403" ]] && ok "Customer cannot see other customer bills" || bad "Bill isolation" "$C"
+C=$(code "$BASE/api/notifications/customer/$CUSTOMER2_ID" -H "Authorization: Bearer $CUST_TOKEN")
+[[ "$C" == "403" ]] && ok "Customer cannot see other customer notifications" || bad "Notification isolation" "$C"
+C=$(code "$BASE/api/bills" -H "Authorization: Bearer $CUST_TOKEN")
+[[ "$C" == "200" ]] && ok "Customer can list own bills only" || bad "Bill list scope" "$C"
+# Missing address rejected
+C=$(code -X POST "$BASE/api/customers" -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" -d "{\"fullName\":\"No Addr\",\"nationalId\":\"$(printf '1%015d' $(((TS + 2) % 1000000000000000)))\",\"phoneNumber\":\"0788111111\",\"email\":\"noaddr$TS@test.rw\",\"password\":\"Customer@1\"}")
+[[ "$C" == "400" ]] && ok "Missing address rejected" || bad "Missing address" "$C"
+# Missing national ID on user create
+C=$(code -X POST "$BASE/api/users" -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" -d "{\"fullName\":\"No NID\",\"email\":\"nonid$TS@wasac.rw\",\"phoneNumber\":\"0788222222\",\"password\":\"Operator@9\",\"role\":\"OPERATOR\"}")
+[[ "$C" == "400" ]] && ok "Missing national ID on user create rejected" || bad "Missing NID user" "$C"
+
 log "METER"
 METER_NUM="WTR-$TS"
 C=$(code -X POST "$BASE/api/meters" -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" -d "{\"meterNumber\":\"$METER_NUM\",\"type\":\"WATER\",\"installationDate\":\"2024-01-01\",\"customerId\":$CUSTOMER_ID}")
@@ -104,12 +124,12 @@ C=$(code "$BASE/api/notifications/customer/$CUSTOMER_ID" -H "Authorization: Bear
 [[ "$C" == "200" ]] && ok "Get notifications" || bad "Notifications" "$C"
 
 log "USERS CRUD"
-C=$(code -X POST "$BASE/api/users" -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" -d "{\"fullName\":\"Op2\",\"email\":\"op2$TS@wasac.rw\",\"phoneNumber\":\"0788999900\",\"password\":\"Operator@9\",\"role\":\"OPERATOR\"}")
+C=$(code -X POST "$BASE/api/users" -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" -d "{\"fullName\":\"Op2\",\"email\":\"op2$TS@wasac.rw\",\"phoneNumber\":\"0788999900\",\"nationalId\":\"$(printf '1%015d' $(((TS + 99) % 1000000000000000)))\",\"password\":\"Operator@9\",\"role\":\"OPERATOR\"}")
 [[ "$C" == "201" ]] && ok "Admin creates user" || bad "Create user" "$(cat /tmp/resp.json)"
 USER_ID=$(cat /tmp/resp.json | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))")
 C=$(code "$BASE/api/users/$USER_ID" -H "Authorization: Bearer $ADMIN_TOKEN")
 [[ "$C" == "200" ]] && ok "Get user by id" || bad "Get user" "$C"
-C=$(code -X PUT "$BASE/api/users/$USER_ID" -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" -d "{\"fullName\":\"Op2 Updated\",\"email\":\"op2$TS@wasac.rw\",\"phoneNumber\":\"0788999901\",\"role\":\"OPERATOR\"}")
+C=$(code -X PUT "$BASE/api/users/$USER_ID" -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" -d "{\"fullName\":\"Op2 Updated\",\"email\":\"op2$TS@wasac.rw\",\"phoneNumber\":\"0788999901\",\"nationalId\":\"$(printf '1%015d' $(((TS + 99) % 1000000000000000)))\",\"role\":\"OPERATOR\"}")
 [[ "$C" == "200" ]] && ok "Update user" || bad "Update user" "$(cat /tmp/resp.json)"
 
 log "GET ENDPOINTS"

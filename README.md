@@ -469,6 +469,8 @@ Use these cases to confirm rules are enforced. All should return **400 Bad Reque
 | Weak password | `"password": "short"` | `400` — password rule error |
 | Duplicate email | Register same email twice | `400` — email already taken |
 | Duplicate national ID | Same ID in users or customers table | `400` — National ID already exists |
+| Missing national ID (any user create/register) | Omit `nationalId` | `400` |
+| Missing address (customer create/register) | Omit `address` | `400` |
 | Duplicate meter number | Two meters with same `meterNumber` | `400` |
 | Duplicate tariff name | Two tariffs with same `name` | `400` |
 
@@ -523,6 +525,15 @@ Use these cases to confirm rules are enforced. All should return **400 Bad Reque
 | Generate bill for inactive customer | `400` |
 | Record payment for inactive customer | `400` |
 | Login as inactive user | `400` |
+
+### Customer data isolation (security)
+
+| Test | Expected |
+|------|----------|
+| Customer lists bills (`GET /api/bills`) | Only own bills returned |
+| Customer views another customer's bills | `403 Forbidden` |
+| Customer views another customer's notifications | `403 Forbidden` |
+| Customer views another customer's payments | `403 Forbidden` |
 
 ---
 
@@ -607,7 +618,7 @@ curl -s -X POST http://localhost:8080/api/customers \
   -d '{"fullName":"Test User","nationalId":"1199880099999999","address":"Kigali","phoneNumber":"0788009999","email":"test@example.rw","password":"Customer@1"}'
 ```
 
-A full automated test script is available at `full-test.sh` in the project root (35 checks).
+A full automated test script is available at `full-test.sh` in the project root (40 checks).
 
 ---
 

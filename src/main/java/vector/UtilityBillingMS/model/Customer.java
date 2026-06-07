@@ -2,7 +2,7 @@ package vector.UtilityBillingMS.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 import vector.UtilityBillingMS.model.enums.EntityStatus;
 
@@ -27,7 +27,8 @@ public class Customer {
     @Column(nullable = false, unique = true)
     private String nationalId;
 
-    @NotNull
+    @NotBlank
+    @Column(nullable = false)
     private String address;
 
     @Column(nullable = false)

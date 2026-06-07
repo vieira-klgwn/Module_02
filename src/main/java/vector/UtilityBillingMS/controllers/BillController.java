@@ -35,25 +35,27 @@ public class BillController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'CUSTOMER')")
-    public ResponseEntity<List<Bill>> findAll() {
-        return ResponseEntity.ok(billService.findAll());
+    public ResponseEntity<List<Bill>> findAll(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(billService.findAllForUser(user));
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'CUSTOMER')")
-    public ResponseEntity<Bill> findById(@PathVariable Long id) {
-        return ResponseEntity.ok(billService.findById(id));
+    public ResponseEntity<Bill> findById(@PathVariable Long id, @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(billService.findByIdForUser(id, user));
     }
 
     @GetMapping("/reference/{reference}")
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'CUSTOMER')")
-    public ResponseEntity<Bill> findByReference(@PathVariable String reference) {
-        return ResponseEntity.ok(billService.findByReference(reference));
+    public ResponseEntity<Bill> findByReference(@PathVariable String reference, @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(billService.findByReferenceForUser(reference, user));
     }
 
     @GetMapping("/customer/{customerId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'CUSTOMER')")
-    public ResponseEntity<List<Bill>> findByCustomer(@PathVariable Long customerId) {
-        return ResponseEntity.ok(billService.findByCustomerId(customerId));
+    public ResponseEntity<List<Bill>> findByCustomer(
+            @PathVariable Long customerId,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(billService.findByCustomerIdForUser(customerId, user));
     }
 }

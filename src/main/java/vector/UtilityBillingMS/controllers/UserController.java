@@ -76,6 +76,7 @@ public class UserController {
                     dto.setFullName(user.getFullName());
                     dto.setEmail(user.getEmail());
                     dto.setPhoneNumber(user.getPhoneNumber());
+                    dto.setNationalId(user.getNationalId());
                     dto.setRole(user.getRole());
                     dto.setStatus(user.getStatus());
                     return ResponseEntity.ok(dto);

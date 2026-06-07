@@ -31,6 +31,9 @@ public class RegisterRequest {
     @ValidNationalId
     private String nationalId;
 
+    @NotBlank(message = "Address is required")
+    private String address;
+
     @NotBlank(message = "Password is required")
     @ValidPassword
     private String password;

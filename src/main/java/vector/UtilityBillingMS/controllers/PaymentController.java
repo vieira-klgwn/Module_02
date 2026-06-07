@@ -31,19 +31,21 @@ public class PaymentController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'CUSTOMER')")
-    public ResponseEntity<List<Payment>> findAll() {
-        return ResponseEntity.ok(paymentService.findAll());
+    public ResponseEntity<List<Payment>> findAll(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(paymentService.findAllForUser(user));
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'CUSTOMER')")
-    public ResponseEntity<Payment> findById(@PathVariable Long id) {
-        return ResponseEntity.ok(paymentService.findById(id));
+    public ResponseEntity<Payment> findById(@PathVariable Long id, @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(paymentService.findByIdForUser(id, user));
     }
 
     @GetMapping("/bill/{billReference}")
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'CUSTOMER')")
-    public ResponseEntity<List<Payment>> findByBillReference(@PathVariable String billReference) {
-        return ResponseEntity.ok(paymentService.findByBillReference(billReference));
+    public ResponseEntity<List<Payment>> findByBillReference(
+            @PathVariable String billReference,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(paymentService.findByBillReferenceForUser(billReference, user));
     }
 }

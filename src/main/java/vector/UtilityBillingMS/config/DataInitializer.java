@@ -27,19 +27,20 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        createUserIfMissing("admin@wasac.rw", "System Admin", "0788000001", Role.ADMIN, "Admin@1234");
-        createUserIfMissing("operator@wasac.rw", "Meter Operator", "0788000002", Role.OPERATOR, "Operator@123");
-        createUserIfMissing("finance@wasac.rw", "Finance Officer", "0788000003", Role.FINANCE, "Finance@123");
+        createUserIfMissing("admin@wasac.rw", "System Admin", "0788000001", "1199880012345601", Role.ADMIN, "Admin@1234");
+        createUserIfMissing("operator@wasac.rw", "Meter Operator", "0788000002", "1199880012345602", Role.OPERATOR, "Operator@123");
+        createUserIfMissing("finance@wasac.rw", "Finance Officer", "0788000003", "1199880012345603", Role.FINANCE, "Finance@123");
         seedBaselineTariffIfMissing(MeterType.WATER, "WASAC Water Baseline", new BigDecimal("350"));
         seedBaselineTariffIfMissing(MeterType.ELECTRICITY, "REG Electricity Baseline", new BigDecimal("120"));
     }
 
-    private void createUserIfMissing(String email, String fullName, String phone, Role role, String password) {
+    private void createUserIfMissing(String email, String fullName, String phone, String nationalId, Role role, String password) {
         if (!userRepository.existsByEmail(email)) {
             userRepository.save(User.builder()
                     .email(email)
                     .fullName(fullName)
                     .phoneNumber(phone)
+                    .nationalId(nationalId)
                     .password(passwordEncoder.encode(password))
                     .role(role)
                     .status(UserStatus.ACTIVE)

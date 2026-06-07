@@ -7,6 +7,7 @@ import lombok.Data;
 import vector.UtilityBillingMS.model.enums.Role;
 import vector.UtilityBillingMS.model.enums.UserStatus;
 import vector.UtilityBillingMS.validation.RwandaPhone;
+import vector.UtilityBillingMS.validation.ValidNationalId;
 
 @Data
 public class UserDTO {
@@ -22,6 +23,10 @@ public class UserDTO {
     @NotBlank(message = "Phone number is required")
     @RwandaPhone
     private String phoneNumber;
+
+    @NotBlank(message = "National ID is required")
+    @ValidNationalId
+    private String nationalId;
 
     private String password;
 

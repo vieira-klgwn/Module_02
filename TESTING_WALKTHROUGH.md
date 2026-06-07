@@ -501,6 +501,7 @@ Marie creates her own account and checks what she owes.
   "email": "marie.uwase@gmail.com",
   "phoneNumber": "0788123456",
   "nationalId": "1199880076543210",
+  "address": "KG 15 Ave, Kigali",
   "password": "Marie@2024",
   "confirmPassword": "Marie@2024"
 }
@@ -870,11 +871,8 @@ Every endpoint below includes purpose, sample payloads, and expected responses. 
 
 | Field | Rule |
 |-------|------|
-| **National ID** | Exactly 16 digits, starts with `1`, numbers only. Example valid: `1200767890123456`. Invalid: `2234567890123456`, `12345`, `1234-5678-9012-3456` |
-| **Email** | Valid format, unique across users |
-| **Phone** | Rwanda format: `+2507XXXXXXXX` or `07XXXXXXXX` |
-| **Password** | Min 8 chars, uppercase, lowercase, number, special character |
-| **National ID uniqueness** | Checked across both `users` and `customers` tables |
+| **National ID** | Required for ALL users (admin, operator, finance, customer). Exactly 16 digits, starts with `1`, numbers only. Unique across `users` and `customers` tables. |
+| **Address** | Required for customer registration (`/api/auth/register` and `/api/customers`) |
 
 ---
 
@@ -891,6 +889,7 @@ Every endpoint below includes purpose, sample payloads, and expected responses. 
   "email": "jean@example.rw",
   "phoneNumber": "0788111222",
   "nationalId": "1199880012345678",
+  "address": "KG 15 Ave, Kigali",
   "password": "Customer@1",
   "confirmPassword": "Customer@1"
 }
@@ -901,6 +900,7 @@ Every endpoint below includes purpose, sample payloads, and expected responses. 
 | Payload issue | Expected |
 |---------------|----------|
 | Missing `nationalId` | `400` — "National ID is required" |
+| Missing `address` | `400` — "Address is required" |
 | `nationalId`: `"2234567890123456"` | `400` — National ID format error |
 | `email`: `"bad-email"` | `400` — email format error |
 | `password`: `"short"` | `400` — password rule error |
@@ -920,7 +920,9 @@ Every endpoint below includes purpose, sample payloads, and expected responses. 
 
 #### POST `/api/auth/register/admin|operator|finance` — Staff signup (Public)
 
-Same body as customer register. Role is set by endpoint path.
+Same body as customer register (including `nationalId` and `address`). Role is set by endpoint path.
+
+**Invalid:** missing `nationalId` → `400`; missing `address` → `400`
 
 ---
 
@@ -946,12 +948,13 @@ Header: `Authorization: Bearer <refresh_token>`
   "fullName": "New Operator",
   "email": "newop@wasac.rw",
   "phoneNumber": "0788999000",
+  "nationalId": "1199880012345699",
   "password": "Operator@9",
   "role": "OPERATOR"
 }
 ```
 
-**Invalid:** weak password → `400`; duplicate email → `400`  
+**Invalid:** missing `nationalId` → `400`; weak password → `400`; duplicate email → `400`  
 **Success:** `201 Created`
 
 #### GET `/api/users`, GET `/api/users/{id}` — List / get user
@@ -1208,5 +1211,87 @@ Run the full automated suite (requires PostgreSQL and running app):
 
 ```bash
 ./mvnw spring-boot:run   # in one terminal
-bash full-test.sh        # in another — expects 35 passing checks
+bash full-test.sh        # in another — expects 40 passing checks
 ```
+
+---
+
+## Appendix C — Security & Data Isolation Tests
+
+These tests verify that customers can only access their own data.
+
+### National ID required (all registration paths)
+
+| Endpoint | Test | Expected |
+|----------|------|----------|
+| `POST /api/auth/register` | Omit `nationalId` | `400` |
+| `POST /api/auth/register/admin` | Omit `nationalId` | `400` |
+| `POST /api/auth/register/operator` | Omit `nationalId` | `400` |
+| `POST /api/auth/register/finance` | Omit `nationalId` | `400` |
+| `POST /api/users` | Omit `nationalId` | `400` |
+
+### Address required (customer paths)
+
+| Endpoint | Test | Expected |
+|----------|------|----------|
+| `POST /api/auth/register` | Omit `address` | `400` |
+| `POST /api/customers` | Omit `address` | `400` |
+| `PUT /api/customers/{id}` | Set `"address": ""` | `400` |
+
+### Meter reading date vs installation date
+
+Meter installed `2025-01-01`, reading dated `2024-12-01`:
+
+**POST** `/api/meter-readings`
+
+```json
+{
+  "meterId": 1,
+  "previousReading": 10,
+  "currentReading": 50,
+  "readingDate": "2024-12-01"
+}
+```
+
+**Expected:** `400` — *"Reading date cannot be before meter installation date"*
+
+### Customer bill isolation
+
+1. Create Customer A and Customer B (as ADMIN)
+2. Generate and approve a bill for Customer B
+3. Login as Customer A
+
+| Request | Token | Expected |
+|---------|-------|----------|
+| `GET /api/bills` | Customer A | `200` — only Customer A's bills |
+| `GET /api/bills/customer/{customerBId}` | Customer A | `403 Forbidden` |
+| `GET /api/bills/{customerBBillId}` | Customer A | `403 Forbidden` |
+| `GET /api/bills/reference/{customerBRef}` | Customer A | `403 Forbidden` |
+
+### Customer notification isolation
+
+| Request | Token | Expected |
+|---------|-------|----------|
+| `GET /api/notifications/customer/{ownId}` | Customer A | `200` — own notifications |
+| `GET /api/notifications/customer/{customerBId}` | Customer A | `403 Forbidden` |
+
+### Payment ownership
+
+Customers cannot record payments (`403` on `POST /api/payments`). For read access:
+
+| Request | Token | Expected |
+|---------|-------|----------|
+| `GET /api/payments` | Customer A | `200` — only payments on Customer A's bills |
+| `GET /api/payments/bill/{customerBRef}` | Customer A | `403 Forbidden` |
+| `GET /api/payments/{customerBPaymentId}` | Customer A | `403 Forbidden` |
+
+### Billing date validations
+
+| Scenario | Expected |
+|----------|----------|
+| Payment date before bill generation date | `400` |
+| Generate bill for inactive customer | `400` |
+| Pay unapproved (PENDING) bill | `400` |
+| Overpayment | `400` |
+
+> Bills use `billingMonth`/`billingYear` derived from the meter reading date. `generatedAt` is set automatically on creation. Payment date must be on or after `generatedAt`.

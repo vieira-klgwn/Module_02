@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import vector.UtilityBillingMS.model.Bill;
 import vector.UtilityBillingMS.model.Customer;
 import vector.UtilityBillingMS.model.Notification;
+import vector.UtilityBillingMS.model.User;
 import vector.UtilityBillingMS.model.enums.NotificationStatus;
 import vector.UtilityBillingMS.repositories.NotificationRepository;
 
@@ -20,6 +21,7 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final EmailService emailService;
+    private final CustomerAccessService customerAccessService;
 
     public Notification createBillNotification(Customer customer, Bill bill) {
         String monthYear = formatMonthYear(bill.getBillingMonth(), bill.getBillingYear());
@@ -85,6 +87,11 @@ public class NotificationService {
 
     public List<Notification> findByCustomerId(Long customerId) {
         return notificationRepository.findByCustomerIdOrderByCreatedAtDesc(customerId);
+    }
+
+    public List<Notification> findByCustomerIdForUser(Long customerId, User user) {
+        customerAccessService.ensureOwnCustomer(user, customerId);
+        return findByCustomerId(customerId);
     }
 
     public List<Notification> findAll() {

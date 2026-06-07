@@ -23,6 +23,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final NationalIdValidationService nationalIdValidationService;
 
     public User createUser(UserDTO dto) {
         if (dto.getPassword() == null || !new PasswordValidator().isValid(dto.getPassword(), null)) {
@@ -31,10 +32,12 @@ public class UserService {
         if (userRepository.existsByEmail(dto.getEmail())) {
             throw new BusinessException("Email already taken: " + dto.getEmail());
         }
+        nationalIdValidationService.ensureUnique(dto.getNationalId());
         User user = User.builder()
                 .fullName(dto.getFullName())
                 .email(dto.getEmail())
                 .phoneNumber(dto.getPhoneNumber())
+                .nationalId(dto.getNationalId())
                 .password(passwordEncoder.encode(dto.getPassword()))
                 .role(dto.getRole())
                 .status(dto.getStatus() != null ? dto.getStatus() : UserStatus.ACTIVE)
@@ -66,6 +69,10 @@ public class UserService {
         user.setFullName(dto.getFullName());
         user.setEmail(dto.getEmail());
         user.setPhoneNumber(dto.getPhoneNumber());
+        if (user.getNationalId() == null || !user.getNationalId().equals(dto.getNationalId())) {
+            nationalIdValidationService.ensureUnique(dto.getNationalId(), user.getId(), null);
+        }
+        user.setNationalId(dto.getNationalId());
         if (dto.getRole() != null) {
             user.setRole(dto.getRole());
         }

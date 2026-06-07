@@ -24,6 +24,7 @@ public class BillService {
     private final MeterService meterService;
     private final CustomerService customerService;
     private final NotificationService notificationService;
+    private final CustomerAccessService customerAccessService;
 
     @Transactional
     public Bill generateBill(BillGenerateRequest request) {
@@ -95,14 +96,26 @@ public class BillService {
     }
 
     public List<Bill> findAll() {
-
         return billRepository.findAll();
     }
 
+    public List<Bill> findAllForUser(User user) {
+        if (customerAccessService.isCustomer(user)) {
+            return findByCustomerId(customerAccessService.resolveCustomerId(user));
+        }
+        return findAll();
+    }
 
     public Bill findById(Long id) {
         return billRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("Bill not found with id: " + id));
+    }
+
+    public Bill findByIdForUser(Long id, User user) {
+        Bill bill = billRepository.findByIdWithCustomer(id)
+                .orElseThrow(() -> new BusinessException("Bill not found with id: " + id));
+        customerAccessService.ensureOwnBill(user, bill);
+        return bill;
     }
 
     public Bill findByReference(String reference) {
@@ -110,7 +123,19 @@ public class BillService {
                 .orElseThrow(() -> new BusinessException("Bill not found with reference: " + reference));
     }
 
+    public Bill findByReferenceForUser(String reference, User user) {
+        Bill bill = billRepository.findByBillReferenceWithCustomer(reference)
+                .orElseThrow(() -> new BusinessException("Bill not found with reference: " + reference));
+        customerAccessService.ensureOwnBill(user, bill);
+        return bill;
+    }
+
     public List<Bill> findByCustomerId(Long customerId) {
         return billRepository.findByCustomerId(customerId);
+    }
+
+    public List<Bill> findByCustomerIdForUser(Long customerId, User user) {
+        customerAccessService.ensureOwnCustomer(user, customerId);
+        return findByCustomerId(customerId);
     }
 }

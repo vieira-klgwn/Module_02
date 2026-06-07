@@ -63,7 +63,7 @@ public class AuthenticationService {
         customer.setPhoneNumber(request.getPhoneNumber());
         customer.setNationalId(request.getNationalId());
         customer.setFullName(request.getFullName());
-        customer.setAddress("Not provided");
+        customer.setAddress(request.getAddress());
         customerRepository.saveAndFlush(customer);
         savedUser.setCustomer(customer);
 
