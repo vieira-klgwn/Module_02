@@ -163,9 +163,14 @@ This means: **350 FRW per unit** of water, plus **500 FRW** fixed charge, plus *
 {
   "fullName": "Marie Uwase",
   "nationalId": "1199880076543210",
-  "phoneNumber": "0788123456"
+  "address": "KG 15 Ave, Kigali",
+  "phoneNumber": "0788123456",
+  "email": "marie.uwase@wasac.rw",
+  "password": "Marie@2024"
 }
 ```
+
+**Role:** ADMIN only
 
 **What you should see:** `201 Created`
 
@@ -468,9 +473,11 @@ If you have a bill still in `PENDING` status, try paying it:
   "billReference": "BILL-XXXXXXXX",
   "amountPaid": 1000,
   "paymentMethod": "CASH",
-  "paymentDate": "2024-07-05"
+  "paymentDate": "2026-06-07"
 }
 ```
+
+> **Important:** `paymentDate` must be on or after the bill generation date (today if you just generated the bill). Use today's date when testing.
 
 Use a **PENDING** (not yet approved) bill reference.
 
@@ -493,6 +500,7 @@ Marie creates her own account and checks what she owes.
   "fullName": "Marie Uwase",
   "email": "marie.uwase@gmail.com",
   "phoneNumber": "0788123456",
+  "nationalId": "1199880076543210",
   "password": "Marie@2024",
   "confirmPassword": "Marie@2024"
 }
@@ -541,9 +549,11 @@ Marie creates her own account and checks what she owes.
   "billReference": "BILL-A1B2C3D4",
   "amountPaid": 1000,
   "paymentMethod": "MOBILE_MONEY",
-  "paymentDate": "2024-07-05"
+  "paymentDate": "2026-06-07"
 }
 ```
+
+> **Important:** `paymentDate` must be on or after the bill generation date (today if you just generated the bill). Use today's date when testing.
 
 **What you should see:** `403 Forbidden` — only finance staff can record payments.
 
@@ -567,9 +577,11 @@ Marie pays **10,000 FRW** toward her water bill.
   "billReference": "BILL-A1B2C3D4",
   "amountPaid": 10000,
   "paymentMethod": "MOBILE_MONEY",
-  "paymentDate": "2024-07-10"
+  "paymentDate": "2026-06-07"
 }
 ```
+
+Use today's date (or any date on/after bill generation). Replace `2026-06-07` with the current date.
 
 Use your actual `waterBillRef`.
 
@@ -598,11 +610,11 @@ Pay exactly what is left. If total was **23,305** and you paid **10,000**, pay *
   "billReference": "BILL-A1B2C3D4",
   "amountPaid": 13305,
   "paymentMethod": "BANK_TRANSFER",
-  "paymentDate": "2024-07-15"
+  "paymentDate": "2026-06-07"
 }
 ```
 
-Adjust `amountPaid` to match your actual `remainingBalance`.
+Adjust `amountPaid` to match your actual `remainingBalance`. Use today's date for `paymentDate`.
 
 **What you should see:** `201 Created`
 
@@ -634,7 +646,7 @@ Try paying again on the same fully paid bill:
   "billReference": "BILL-A1B2C3D4",
   "amountPaid": 1000,
   "paymentMethod": "CASH",
-  "paymentDate": "2024-07-16"
+  "paymentDate": "2026-06-07"
 }
 ```
 
@@ -715,7 +727,9 @@ Simulate the next billing cycle to confirm duplicate-reading protection works.
 {
   "fullName": "Marie Uwase",
   "nationalId": "1199880076543210",
+  "address": "KG 15 Ave, Kigali",
   "phoneNumber": "0788123456",
+  "email": "marie.uwase@wasac.rw",
   "status": "INACTIVE"
 }
 ```
@@ -845,3 +859,354 @@ Go through this list after completing the walkthrough:
 | `finance@wasac.rw` | `Finance@123` | FINANCE |
 
 Customers self-register via `POST /api/auth/register`.
+
+---
+
+## Appendix A — Complete Endpoint Reference (Postman)
+
+Every endpoint below includes purpose, sample payloads, and expected responses. Use `Authorization: Bearer <token>` unless marked **Public**.
+
+### Validation Rules (Global)
+
+| Field | Rule |
+|-------|------|
+| **National ID** | Exactly 16 digits, starts with `1`, numbers only. Example valid: `1200767890123456`. Invalid: `2234567890123456`, `12345`, `1234-5678-9012-3456` |
+| **Email** | Valid format, unique across users |
+| **Phone** | Rwanda format: `+2507XXXXXXXX` or `07XXXXXXXX` |
+| **Password** | Min 8 chars, uppercase, lowercase, number, special character |
+| **National ID uniqueness** | Checked across both `users` and `customers` tables |
+
+---
+
+### Authentication (`/api/auth`)
+
+#### POST `/api/auth/register` — Customer signup (Public)
+
+**Purpose:** Self-register as CUSTOMER with linked user account.
+
+**Valid payload:**
+```json
+{
+  "fullName": "Jean Uwimana",
+  "email": "jean@example.rw",
+  "phoneNumber": "0788111222",
+  "nationalId": "1199880012345678",
+  "password": "Customer@1",
+  "confirmPassword": "Customer@1"
+}
+```
+
+**Invalid payloads:**
+
+| Payload issue | Expected |
+|---------------|----------|
+| Missing `nationalId` | `400` — "National ID is required" |
+| `nationalId`: `"2234567890123456"` | `400` — National ID format error |
+| `email`: `"bad-email"` | `400` — email format error |
+| `password`: `"short"` | `400` — password rule error |
+| Duplicate email or national ID | `400` — already taken/exists |
+
+**Success:** `200 OK` with `access_token` and `refresh_token`
+
+---
+
+#### POST `/api/auth/login` — Login (Public)
+
+**Valid:** `{"email":"admin@wasac.rw","password":"Admin@1234"}`  
+**Invalid password:** `401`  
+**Inactive user:** `400` — "User account is inactive"
+
+---
+
+#### POST `/api/auth/register/admin|operator|finance` — Staff signup (Public)
+
+Same body as customer register. Role is set by endpoint path.
+
+---
+
+#### POST `/api/auth/refresh-token` — Refresh JWT (Public)
+
+Header: `Authorization: Bearer <refresh_token>`
+
+---
+
+#### POST `/api/auth/logout` — Revoke token (Authenticated)
+
+**Success:** `200 OK`
+
+---
+
+### Users (`/api/users`) — ADMIN (except `/me` and `/change-password`)
+
+#### POST `/api/users` — Create staff user
+
+**Valid:**
+```json
+{
+  "fullName": "New Operator",
+  "email": "newop@wasac.rw",
+  "phoneNumber": "0788999000",
+  "password": "Operator@9",
+  "role": "OPERATOR"
+}
+```
+
+**Invalid:** weak password → `400`; duplicate email → `400`  
+**Success:** `201 Created`
+
+#### GET `/api/users`, GET `/api/users/{id}` — List / get user
+
+**Success:** `200 OK`
+
+#### PUT `/api/users/{id}` — Update user
+
+**Valid:** same fields as create (password optional)  
+**Invalid:** duplicate email → `400`; weak password on update → `400`  
+**Success:** `200 OK`
+
+#### DELETE `/api/users/{id}` — Delete user
+
+**Success:** `204 No Content`
+
+#### GET `/api/users/me` — Current profile (Any authenticated)
+
+**Success:** `200 OK` with UserDTO (no password)
+
+#### PATCH `/api/users/change-password` — Change own password (Any authenticated)
+
+**Valid:**
+```json
+{
+  "currentPassword": "Admin@1234",
+  "newPassword": "Admin@5678",
+  "confirmationPassword": "Admin@5678"
+}
+```
+
+**Invalid:** wrong current password → `400`; weak new password → `400`; mismatch → `400`  
+**Success:** `200 OK`
+
+---
+
+### Customers (`/api/customers`)
+
+#### POST `/api/customers` — Create customer (ADMIN)
+
+**Valid:**
+```json
+{
+  "fullName": "Jean Uwimana",
+  "nationalId": "1199880012345678",
+  "address": "KG 15 Ave, Kigali",
+  "phoneNumber": "0788111222",
+  "email": "jean@example.rw",
+  "password": "Customer@1"
+}
+```
+
+**Invalid:**
+
+| Test | Expected |
+|------|----------|
+| Invalid national ID | `400` |
+| Invalid phone | `400` |
+| Missing address/email/password | `400` |
+| Duplicate national ID (user or customer table) | `400` |
+| Duplicate email | `400` |
+
+**Success:** `201 Created` — creates linked CUSTOMER user
+
+#### GET `/api/customers` — List (ADMIN, FINANCE, OPERATOR)
+
+#### GET `/api/customers/{id}` — Get (ADMIN, FINANCE, OPERATOR, CUSTOMER)
+
+#### PUT `/api/customers/{id}` — Update (ADMIN)
+
+**Valid:** same as create; password optional  
+**Invalid:** duplicate national ID/email on another record → `400`  
+**Success:** `200 OK`
+
+#### DELETE `/api/customers/{id}` — Delete (ADMIN)
+
+**Success:** `204` — cascades linked user
+
+---
+
+### Meters (`/api/meters`)
+
+#### POST `/api/meters` — Create (ADMIN, OPERATOR)
+
+**Valid:**
+```json
+{
+  "meterNumber": "WTR-001",
+  "type": "WATER",
+  "installationDate": "2024-01-15",
+  "customerId": 1
+}
+```
+
+**Invalid:**
+
+| Test | Expected |
+|------|----------|
+| Future `installationDate` | `400` — "Installation date cannot be in the future" |
+| Inactive customer | `400` — "Customer is inactive and cannot be used" |
+| Duplicate meter number | `400` |
+| Missing fields | `400` |
+
+**Success:** `201 Created`
+
+#### GET `/api/meters`, GET `/api/meters/{id}`, GET `/api/meters/customer/{customerId}`
+
+#### PUT `/api/meters/{id}` — Update (ADMIN)
+
+Same validation as create.
+
+#### DELETE `/api/meters/{id}` — Delete (ADMIN)
+
+---
+
+### Meter Readings (`/api/meter-readings`)
+
+#### POST `/api/meter-readings` — Record reading (OPERATOR only)
+
+**Valid:**
+```json
+{
+  "meterId": 1,
+  "previousReading": 100,
+  "currentReading": 150,
+  "readingDate": "2024-06-15"
+}
+```
+
+> `billingMonth` and `billingYear` are **automatically derived** from `readingDate` — do not send them.
+
+**Invalid:**
+
+| Test | Expected |
+|------|----------|
+| `currentReading` ≤ `previousReading` | `400` |
+| Negative readings | `400` |
+| Duplicate month/year for same meter | `400` |
+| Inactive meter or customer | `400` |
+| `readingDate` before installation date | `400` |
+| CUSTOMER role | `403` |
+
+**Success:** `201 Created`
+
+#### GET endpoints — ADMIN, FINANCE, OPERATOR (CUSTOMER for `/meter/{meterId}`)
+
+---
+
+### Tariffs (`/api/tariffs`) — ADMIN create; ADMIN/FINANCE read
+
+#### POST `/api/tariffs` — Create versioned tariff
+
+**Valid (flat):**
+```json
+{
+  "name": "Water Flat 2026",
+  "utilityType": "WATER",
+  "tariffType": "FLAT",
+  "effectiveFrom": "2026-12-01",
+  "vatRate": 18,
+  "fixedServiceCharge": 500,
+  "flatRate": 350
+}
+```
+
+**Invalid:**
+
+| Test | Expected |
+|------|----------|
+| Duplicate tariff name | `400` |
+| Past effectiveFrom (when prior version exists) | `400` |
+| Missing flatRate for FLAT type | `400` |
+| Empty tiers for TIERED type | `400` |
+| Negative VAT/charges | `400` |
+
+**Success:** `201 Created` — previous open tariff auto-closed with `effectiveTo`
+
+> Historical bills retain their original `tariff_id` — new tariffs do not affect past bills.
+
+---
+
+### Bills (`/api/bills`)
+
+#### POST `/api/bills/generate` — Generate bill (ADMIN, FINANCE)
+
+**Valid:** `{"meterReadingId": 1, "applyPenalty": false}`
+
+**Invalid:**
+
+| Test | Expected |
+|------|----------|
+| Duplicate bill for same reading | `400` |
+| Inactive customer/meter | `400` |
+| No applicable tariff | `400` |
+
+**Success:** `201 Created`, `status: PENDING`, notification + email sent
+
+#### PUT `/api/bills/{id}/approve` — Approve (ADMIN, FINANCE)
+
+**Invalid:** non-PENDING bill → `400`  
+**Success:** `200 OK`, `status: APPROVED`
+
+#### GET endpoints — list, by id, by reference, by customer
+
+---
+
+### Payments (`/api/payments`) — FINANCE records; all roles can read own
+
+#### POST `/api/payments` — Record payment
+
+**Valid:**
+```json
+{
+  "billReference": "BILL-XXXXXXXX",
+  "amountPaid": 10000,
+  "paymentMethod": "MOBILE_MONEY",
+  "paymentDate": "2026-06-07"
+}
+```
+
+**Methods:** `CASH`, `MOBILE_MONEY`, `BANK_TRANSFER`, `CARD`
+
+**Invalid:**
+
+| Test | Expected |
+|------|----------|
+| Unapproved (PENDING) bill | `400` — must be approved first |
+| Overpayment | `400` |
+| Zero/negative amount | `400` |
+| Payment date before bill generation | `400` |
+| Inactive customer | `400` |
+| Already PAID bill | `400` |
+| CUSTOMER role | `403` |
+
+**Success:** `201 Created`
+- Partial → `PARTIALLY_PAID`, email with remaining balance
+- Full → `PAID`, email with success message
+
+---
+
+### Notifications (`/api/notifications`)
+
+#### GET `/api/notifications` — All (ADMIN, FINANCE)
+
+#### GET `/api/notifications/customer/{customerId}` — By customer
+
+**Success:** `200 OK` — includes BILL and PAYMENT notifications
+
+---
+
+## Appendix B — Automated Test Script
+
+Run the full automated suite (requires PostgreSQL and running app):
+
+```bash
+./mvnw spring-boot:run   # in one terminal
+bash full-test.sh        # in another — expects 35 passing checks
+```

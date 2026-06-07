@@ -25,6 +25,10 @@ public class TariffService {
     public Tariff create(TariffRequest request) {
         validateTariffRequest(request);
 
+        if (tariffRepository.existsByName(request.getName())) {
+            throw new BusinessException("Tariff name already exists: " + request.getName());
+        }
+
         LocalDate today = LocalDate.now();
         var existingLatest = tariffRepository.findTopByUtilityTypeOrderByVersionDesc(request.getUtilityType());
         int nextVersion = existingLatest.map(t -> t.getVersion() + 1).orElse(1);
@@ -38,7 +42,11 @@ public class TariffService {
                 .filter(t -> t.getEffectiveTo() == null)
                 .findFirst()
                 .ifPresent(current -> {
-                    current.setEffectiveTo(request.getEffectiveFrom().minusDays(1));
+                    LocalDate closingDate = request.getEffectiveFrom().minusDays(1);
+                    if (closingDate.isBefore(current.getEffectiveFrom())) {
+                        throw new BusinessException("Effective to date cannot be before effective from date");
+                    }
+                    current.setEffectiveTo(closingDate);
                     tariffRepository.save(current);
                 });
 

@@ -9,6 +9,7 @@ import org.springframework.format.annotation.NumberFormat;
 import vector.UtilityBillingMS.model.enums.EntityStatus;
 import vector.UtilityBillingMS.model.enums.UserStatus;
 import vector.UtilityBillingMS.validation.RwandaPhone;
+import vector.UtilityBillingMS.validation.ValidNationalId;
 
 @Data
 public class CustomerRequest {
@@ -16,6 +17,7 @@ public class CustomerRequest {
     private String fullName;
 
     @NotBlank(message = "National ID is required")
+    @ValidNationalId
     private String nationalId;
 
     @NotBlank(message = "Address is required")

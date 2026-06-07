@@ -10,6 +10,7 @@ import vector.UtilityBillingMS.model.dto.MeterReadingRequest;
 import vector.UtilityBillingMS.repositories.MeterReadingRepository;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -31,6 +32,10 @@ public class MeterReadingService {
             throw new BusinessException("Readings cannot be negative");
         }
 
+        if (request.getReadingDate().isBefore(meter.getInstallationDate())) {
+            throw new BusinessException("Reading date cannot be before meter installation date");
+        }
+
         int month = request.getReadingDate().getMonthValue();
         int year = request.getReadingDate().getYear();
         if (meterReadingRepository.existsByMeterIdAndBillingMonthAndBillingYear(meter.getId(), month, year)) {
@@ -42,8 +47,6 @@ public class MeterReadingService {
                 .previousReading(request.getPreviousReading())
                 .currentReading(request.getCurrentReading())
                 .readingDate(request.getReadingDate())
-                .billingMonth(month)
-                .billingYear(year)
                 .recordedBy(operator)
                 .build();
         return meterReadingRepository.save(reading);

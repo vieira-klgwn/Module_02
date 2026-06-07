@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import vector.UtilityBillingMS.model.enums.Role;
 import vector.UtilityBillingMS.validation.RwandaPhone;
+import vector.UtilityBillingMS.validation.ValidNationalId;
 import vector.UtilityBillingMS.validation.ValidPassword;
 
 @Data
@@ -27,6 +28,7 @@ public class RegisterRequest {
     private String phoneNumber;
 
     @NotBlank(message = "National ID is required")
+    @ValidNationalId
     private String nationalId;
 
     @NotBlank(message = "Password is required")

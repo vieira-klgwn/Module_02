@@ -9,6 +9,7 @@ import vector.UtilityBillingMS.model.dto.MeterRequest;
 import vector.UtilityBillingMS.model.enums.EntityStatus;
 import vector.UtilityBillingMS.repositories.MeterRepository;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -24,6 +25,7 @@ public class MeterService {
         }
         Customer customer = customerService.findById(request.getCustomerId());
         customerService.ensureActive(customer);
+        validateInstallationDate(request.getInstallationDate());
 
         Meter meter = Meter.builder()
                 .meterNumber(request.getMeterNumber())
@@ -56,6 +58,7 @@ public class MeterService {
         }
         Customer customer = customerService.findById(request.getCustomerId());
         customerService.ensureActive(customer);
+        validateInstallationDate(request.getInstallationDate());
 
         meter.setMeterNumber(request.getMeterNumber());
         meter.setType(request.getType());
@@ -79,5 +82,11 @@ public class MeterService {
             throw new BusinessException("Meter is inactive and cannot be used");
         }
         customerService.ensureActive(meter.getCustomer());
+    }
+
+    private void validateInstallationDate(java.time.LocalDate installationDate) {
+        if (installationDate != null && installationDate.isAfter(LocalDate.now())) {
+            throw new BusinessException("Installation date cannot be in the future");
+        }
     }
 }

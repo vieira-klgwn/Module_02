@@ -10,4 +10,16 @@ import java.util.Optional;
 public interface CustomerRepository extends JpaRepository<Customer, Long> {
     boolean existsByNationalId(String nationalId);
     Optional<Customer> findByNationalId(String nationalId);
+
+    default boolean existsByNationalIdAndIdNot(String nationalId, Long excludeId) {
+        if (nationalId == null || nationalId.isBlank()) {
+            return false;
+        }
+        if (excludeId == null) {
+            return existsByNationalId(nationalId);
+        }
+        return existsByNationalId(nationalId) && findByNationalId(nationalId)
+                .map(c -> !c.getId().equals(excludeId))
+                .orElse(false);
+    }
 }

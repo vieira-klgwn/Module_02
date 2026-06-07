@@ -4,6 +4,7 @@ BASE=http://localhost:8080
 PASS=0
 FAIL=0
 TS=$(date +%s)
+TODAY=$(date +%Y-%m-%d)
 
 log() { echo ""; echo "=== $1 ==="; }
 ok() { echo "✓ $1"; PASS=$((PASS+1)); }
@@ -24,9 +25,10 @@ C=$(code "$BASE/api/customers")
 [[ "$C" == "401" || "$C" == "403" ]] && ok "Unauthenticated blocked" || bad "Unauth" "$C"
 
 log "CUSTOMER + USER CREATION"
-NID="11998800$TS"
+NID=$(printf '1%015d' $((TS % 1000000000000000)))
+PHONE="07$(printf '%08d' $((TS % 100000000)))"
 EMAIL="cust$TS@test.rw"
-CUST_BODY="{\"fullName\":\"Test Cust $TS\",\"nationalId\":\"$NID\",\"address\":\"Kigali\",\"phoneNumber\":\"0788${TS: -6}\",\"email\":\"$EMAIL\",\"password\":\"Customer@1\"}"
+CUST_BODY="{\"fullName\":\"Test Cust $TS\",\"nationalId\":\"$NID\",\"address\":\"Kigali\",\"phoneNumber\":\"$PHONE\",\"email\":\"$EMAIL\",\"password\":\"Customer@1\"}"
 C=$(code -X POST "$BASE/api/customers" -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" -d "$CUST_BODY")
 RESP=$(cat /tmp/resp.json)
 [[ "$C" == "201" ]] && ok "Create customer" || bad "Create customer" "$RESP"
@@ -40,6 +42,9 @@ DB_USER=$(PGPASSWORD=klgwn psql -h localhost -U postgres -d springboot_practice 
 CUST_TOKEN=$(token "{\"email\":\"$EMAIL\",\"password\":\"Customer@1\"}" 2>/dev/null || echo "")
 [[ -n "$CUST_TOKEN" ]] && ok "Customer user can login" || bad "Customer login" "failed"
 
+# Validation: bad national ID format
+C=$(code -X POST "$BASE/api/customers" -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" -d '{"fullName":"X","nationalId":"2234567890123456","address":"K","phoneNumber":"0788123456","email":"badnid@test.rw","password":"Customer@1"}')
+[[ "$C" == "400" ]] && ok "Invalid national ID rejected" || bad "Invalid NID" "$C"
 # Validation: bad phone
 C=$(code -X POST "$BASE/api/customers" -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" -d '{"fullName":"X","nationalId":"999","address":"K","phoneNumber":"123","email":"x@t.rw","password":"Customer@1"}')
 [[ "$C" == "400" ]] && ok "Invalid phone rejected" || bad "Invalid phone" "$C"
@@ -87,9 +92,9 @@ C=$(code -X PUT "$BASE/api/bills/$BILL_ID/approve" -H "Authorization: Bearer $FI
 REMAINING=$(cat /tmp/resp.json | python3 -c "import sys,json; print(json.load(sys.stdin).get('remainingBalance',0))")
 
 log "PAYMENTS"
-C=$(code -X POST "$BASE/api/payments" -H "Authorization: Bearer $FIN_TOKEN" -H "Content-Type: application/json" -d "{\"billReference\":\"$BILL_REF\",\"amountPaid\":99999999,\"paymentMethod\":\"CASH\",\"paymentDate\":\"2024-09-20\"}")
+C=$(code -X POST "$BASE/api/payments" -H "Authorization: Bearer $FIN_TOKEN" -H "Content-Type: application/json" -d "{\"billReference\":\"$BILL_REF\",\"amountPaid\":99999999,\"paymentMethod\":\"CASH\",\"paymentDate\":\"$TODAY\"}")
 [[ "$C" == "400" ]] && ok "Overpayment rejected" || bad "Overpay" "$(cat /tmp/resp.json)"
-C=$(code -X POST "$BASE/api/payments" -H "Authorization: Bearer $FIN_TOKEN" -H "Content-Type: application/json" -d "{\"billReference\":\"$BILL_REF\",\"amountPaid\":$REMAINING,\"paymentMethod\":\"MOBILE_MONEY\",\"paymentDate\":\"2024-09-25\"}")
+C=$(code -X POST "$BASE/api/payments" -H "Authorization: Bearer $FIN_TOKEN" -H "Content-Type: application/json" -d "{\"billReference\":\"$BILL_REF\",\"amountPaid\":$REMAINING,\"paymentMethod\":\"MOBILE_MONEY\",\"paymentDate\":\"$TODAY\"}")
 [[ "$C" == "201" ]] && ok "Full payment recorded" || bad "Payment" "$(cat /tmp/resp.json)"
 DB_BILL_STATUS=$(PGPASSWORD=klgwn psql -h localhost -U postgres -d springboot_practice -t -A -c "SELECT status,remaining_balance FROM bills WHERE id=$BILL_ID;" 2>/dev/null || echo "")
 [[ "$DB_BILL_STATUS" == *"PAID"* && "$DB_BILL_STATUS" == *"0.00"* ]] && ok "DB: bill PAID balance 0" || bad "DB bill status" "$DB_BILL_STATUS"

@@ -46,7 +46,7 @@ psql -h localhost -U postgres -d springboot_practice
 Inside psql:
 
 ```sql
-\i /home/vieira/Documents/National_Exams_Java/database/database_routines.sql
+\i /home/klgwn/Documents/Module_02/database/database_routines.sql
 ```
 
 Verify:
@@ -62,7 +62,7 @@ You should see the functions and procedures listed.
 
 ```bash
 psql -h localhost -U postgres -d springboot_practice \
-  -f /home/vieira/Documents/National_Exams_Java/database/database_routines.sql
+  -f /home/klgwn/Documents/Module_02/database/database_routines.sql
 ```
 
 ---

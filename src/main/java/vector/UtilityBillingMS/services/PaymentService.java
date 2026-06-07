@@ -23,6 +23,7 @@ public class PaymentService {
     private final BillRepository billRepository;
     private final BillService billService;
     private final NotificationService notificationService;
+    private final CustomerService customerService;
 
     @Transactional
     public Payment recordPayment(PaymentRequest request, User financeUser) {
@@ -36,6 +37,13 @@ public class PaymentService {
         }
         if (bill.getStatus() == BillStatus.PENDING) {
             throw new BusinessException("Bill must be approved before payment");
+        }
+
+        customerService.ensureActive(bill.getCustomer());
+
+        if (bill.getGeneratedAt() != null
+                && request.getPaymentDate().isBefore(bill.getGeneratedAt().toLocalDate())) {
+            throw new BusinessException("Payment date cannot be before bill generation date");
         }
 
         if (request.getAmountPaid().compareTo(bill.getRemainingBalance()) > 0) {

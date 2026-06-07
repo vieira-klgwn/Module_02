@@ -26,14 +26,13 @@ public class CustomerService {
     private final CustomerRepository customerRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final NationalIdValidationService nationalIdValidationService;
     private final PasswordValidator passwordValidator = new PasswordValidator();
 
     public Customer create(CustomerRequest request) {
         validatePassword(request.getPassword(), true);
 
-        if (customerRepository.existsByNationalId(request.getNationalId())) {
-            throw new BusinessException("National ID already exists: " + request.getNationalId());
-        }
+        nationalIdValidationService.ensureUnique(request.getNationalId());
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new BusinessException("Email already taken: " + request.getEmail());
         }
@@ -80,9 +79,8 @@ public class CustomerService {
             throw new BusinessException("No user account linked to this customer");
         }
 
-        if (!customer.getNationalId().equals(request.getNationalId())
-                && customerRepository.existsByNationalId(request.getNationalId())) {
-            throw new BusinessException("National ID already exists: " + request.getNationalId());
+        if (!customer.getNationalId().equals(request.getNationalId())) {
+            nationalIdValidationService.ensureUnique(request.getNationalId(), user.getId(), customer.getId());
         }
         if (!user.getEmail().equals(request.getEmail()) && userRepository.existsByEmail(request.getEmail())) {
             throw new BusinessException("Email already taken: " + request.getEmail());

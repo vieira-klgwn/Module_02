@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import vector.UtilityBillingMS.model.enums.EntityStatus;
 import vector.UtilityBillingMS.validation.RwandaPhone;
+import vector.UtilityBillingMS.validation.ValidNationalId;
 
 @Data
 public class CustomerDTO {
@@ -11,6 +12,7 @@ public class CustomerDTO {
     private String fullName;
 
     @NotBlank(message = "National ID is required")
+    @ValidNationalId
     private String nationalId;
 
     @NotBlank(message = "Phone number is required")

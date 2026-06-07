@@ -22,6 +22,7 @@ public class BillService {
     private final MeterReadingService meterReadingService;
     private final TariffService tariffService;
     private final MeterService meterService;
+    private final CustomerService customerService;
     private final NotificationService notificationService;
 
     @Transactional
@@ -34,9 +35,14 @@ public class BillService {
         Meter meter = reading.getMeter();
         meterService.ensureActive(meter);
         Customer customer = meter.getCustomer();
+        customerService.ensureActive(customer);
 
         Tariff tariff = tariffService.findApplicableTariff(meter.getType(), reading.getReadingDate());
         BigDecimal consumption = reading.getCurrentReading().subtract(reading.getPreviousReading());
+
+        if (consumption.compareTo(BigDecimal.ZERO) < 0) {
+            throw new BusinessException("Bill consumption cannot be negative");
+        }
 
         BigDecimal subtotal = tariffService.calculateConsumptionCost(tariff, consumption);
         BigDecimal fixedCharge = tariff.getFixedServiceCharge();
@@ -49,6 +55,10 @@ public class BillService {
         BigDecimal vatAmount = beforeVat.multiply(tariff.getVatRate())
                 .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
         BigDecimal totalAmount = beforeVat.add(vatAmount);
+
+        if (totalAmount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new BusinessException("Bill total amount cannot be negative");
+        }
 
         Bill bill = Bill.builder()
                 .billReference("BILL-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())

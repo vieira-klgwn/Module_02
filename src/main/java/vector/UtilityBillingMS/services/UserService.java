@@ -73,6 +73,9 @@ public class UserService {
             user.setStatus(dto.getStatus());
         }
         if (dto.getPassword() != null && !dto.getPassword().isBlank()) {
+            if (!new PasswordValidator().isValid(dto.getPassword(), null)) {
+                throw new BusinessException("Password must be at least 8 characters with uppercase, lowercase, number and special character");
+            }
             user.setPassword(passwordEncoder.encode(dto.getPassword()));
         }
         return userRepository.save(user);
@@ -92,6 +95,9 @@ public class UserService {
         }
         if (!request.getNewPassword().equals(request.getConfirmationPassword())) {
             throw new BusinessException("Passwords do not match");
+        }
+        if (!new PasswordValidator().isValid(request.getNewPassword(), null)) {
+            throw new BusinessException("Password must be at least 8 characters with uppercase, lowercase, number and special character");
         }
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);

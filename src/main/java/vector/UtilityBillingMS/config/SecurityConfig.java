@@ -34,7 +34,7 @@ public class SecurityConfig {
             "/api/auth/login",
             "/api/auth/register",
             "/api/auth/register/admin",
-            "api/auth/register/operator",
+            "/api/auth/register/operator",
             "/api/auth/register/finance",
             "/api/auth/refresh-token",
             "/v3/api-docs/**",

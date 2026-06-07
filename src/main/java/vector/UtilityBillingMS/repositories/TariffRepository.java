@@ -21,4 +21,6 @@ public interface TariffRepository extends JpaRepository<Tariff, Long> {
     }
 
     Optional<Tariff> findTopByUtilityTypeOrderByVersionDesc(MeterType utilityType);
+
+    boolean existsByName(String name);
 }

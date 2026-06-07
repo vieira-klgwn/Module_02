@@ -25,7 +25,7 @@
 --
 -- 2. Run this entire script from psql:
 --
---      \i /home/vieira/Documents/National_Exams_Java/database/database_routines.sql
+--      \i /home/klgwn/Documents/Module_02/database/database_routines.sql
 --
 --    Or from the shell without entering psql interactively:
 --

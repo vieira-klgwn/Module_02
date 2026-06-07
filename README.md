@@ -111,6 +111,9 @@ Example: `Customer@1`
 
 - `POST /api/auth/login`
 - `POST /api/auth/register`
+- `POST /api/auth/register/admin`
+- `POST /api/auth/register/operator`
+- `POST /api/auth/register/finance`
 - `POST /api/auth/refresh-token`
 - Swagger UI and API docs
 
@@ -169,17 +172,20 @@ Login (ADMIN) → Create Customer → Create Meter → Create Tariff
 ### Step 2 — Create a customer
 
 `POST /api/customers`  
-**Role:** ADMIN, FINANCE, or OPERATOR
+**Role:** ADMIN
 
 ```json
 {
   "fullName": "Jean Uwimana",
   "nationalId": "1199880012345678",
-  "phoneNumber": "0788111222"
+  "address": "KG 15 Ave, Kigali",
+  "phoneNumber": "0788111222",
+  "email": "jean@example.rw",
+  "password": "Customer@1"
 }
 ```
 
-**Expected:** `201 Created` — save `id` as `customerId`.
+**Expected:** `201 Created` — save `id` as `customerId`. Creates a linked CUSTOMER user account.
 
 ---
 
@@ -368,7 +374,7 @@ A notification is created automatically.
 
 | Method | Endpoint | Role | Description |
 |--------|----------|------|-------------|
-| POST | `/api/customers` | ADMIN, FINANCE, OPERATOR | Create customer |
+| POST | `/api/customers` | ADMIN | Create customer |
 | GET | `/api/customers` | ADMIN, FINANCE, OPERATOR | List customers |
 | GET | `/api/customers/{id}` | ADMIN, FINANCE, OPERATOR, CUSTOMER | Get customer |
 | PUT | `/api/customers/{id}` | ADMIN | Update customer |
@@ -458,14 +464,29 @@ Use these cases to confirm rules are enforced. All should return **400 Bad Reque
 | Empty body | POST any endpoint with `{}` | `400` — field validation errors |
 | Invalid email | `"email": "not-an-email"` | `400` — email format error |
 | Invalid phone | `"phoneNumber": "12345"` | `400` — Rwanda phone format error |
+| Invalid national ID | `"nationalId": "2234567890123456"` | `400` — must be 16 digits starting with 1 |
+| Invalid national ID | `"nationalId": "1234-5678-9012-3456"` | `400` — letters/special chars rejected |
 | Weak password | `"password": "short"` | `400` — password rule error |
 | Duplicate email | Register same email twice | `400` — email already taken |
-| Duplicate national ID | Two customers with same `nationalId` | `400` |
+| Duplicate national ID | Same ID in users or customers table | `400` — National ID already exists |
 | Duplicate meter number | Two meters with same `meterNumber` | `400` |
+| Duplicate tariff name | Two tariffs with same `name` | `400` |
+
+**Valid National ID example:** `1200767890123456`
 
 **Valid Rwanda phone formats:**
 - `+250788123456`
 - `0788123456`
+
+**Password rules:** minimum 8 characters, at least 1 uppercase, 1 lowercase, 1 number, 1 special character.
+
+### Meter rules
+
+| Test | Expected |
+|------|----------|
+| Future installation date | `400` — cannot be in the future |
+| Create meter for inactive customer | `400` |
+| Duplicate meter number | `400` |
 
 ### Meter reading rules
 
@@ -476,23 +497,31 @@ Use these cases to confirm rules are enforced. All should return **400 Bad Reque
 | Second reading same meter/month/year | `400` |
 | Reading on inactive meter | `400` |
 | Reading on meter with inactive customer | `400` |
+| Reading date before installation date | `400` |
+| Month/year manually sent in body | Ignored — derived from `readingDate` |
 
 ### Billing & payment rules
 
 | Test | Expected |
 |------|----------|
+| Generate bill for inactive customer | `400` |
 | Generate bill twice for same reading | `400` |
 | Pay bill before approval | `400` |
 | Payment amount > remaining balance | `400` |
+| Payment date before bill generation | `400` |
 | Pay already fully paid bill | `400` |
+| Zero or negative payment amount | `400` |
 | Negative tariff values | `400` |
+| Past effectiveFrom for new tariff version | `400` |
 
 ### Inactive entity rules
 
 | Test | Expected |
 |------|----------|
 | Create meter for inactive customer | `400` |
-| Record reading on inactive meter | `400` |
+| Record reading on inactive meter/customer | `400` |
+| Generate bill for inactive customer | `400` |
+| Record payment for inactive customer | `400` |
 | Login as inactive user | `400` |
 
 ---
@@ -575,10 +604,10 @@ TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
 curl -s -X POST http://localhost:8080/api/customers \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"fullName":"Test User","nationalId":"1199880099999999","phoneNumber":"0788009999"}'
+  -d '{"fullName":"Test User","nationalId":"1199880099999999","address":"Kigali","phoneNumber":"0788009999","email":"test@example.rw","password":"Customer@1"}'
 ```
 
-A full automated test script is available at `test-api.sh` in the project root.
+A full automated test script is available at `full-test.sh` in the project root (35 checks).
 
 ---
 
@@ -592,7 +621,8 @@ Use this checklist to confirm the project meets exam requirements:
 - [ ] OPERATOR can only create meter readings
 - [ ] FINANCE can generate bills, approve bills, and record payments
 - [ ] CUSTOMER can sign up and view bills/payments
-- [ ] Validation returns `400` with clear messages
+- [ ] Validation returns `400` with clear messages (national ID, phone, email, password, dates)
+- [ ] National ID uniqueness enforced across users and customers
 - [ ] Business rules block invalid data before it reaches the database
 - [ ] Bills use versioned tariffs (old tariffs remain for past cycles)
 - [ ] Partial payments update balance; full payment marks bill `PAID`

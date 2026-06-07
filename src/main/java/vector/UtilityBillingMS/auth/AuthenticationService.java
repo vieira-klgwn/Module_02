@@ -19,6 +19,7 @@ import vector.UtilityBillingMS.model.enums.UserStatus;
 import vector.UtilityBillingMS.repositories.CustomerRepository;
 import vector.UtilityBillingMS.repositories.TokenRepository;
 import vector.UtilityBillingMS.repositories.UserRepository;
+import vector.UtilityBillingMS.services.NationalIdValidationService;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -34,11 +35,13 @@ public class AuthenticationService {
     private final AuthenticationManager authenticationManager;
     private static final Logger logger = Logger.getLogger(AuthenticationService.class.getName());
     private final CustomerRepository customerRepository;
+    private final NationalIdValidationService nationalIdValidationService;
 
     public AuthenticationResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new BusinessException("Email already taken: " + request.getEmail());
         }
+        nationalIdValidationService.ensureUnique(request.getNationalId());
         if (!request.getPassword().equals(request.getConfirmPassword())) {
             throw new BusinessException("Passwords do not match");
         }
@@ -60,6 +63,7 @@ public class AuthenticationService {
         customer.setPhoneNumber(request.getPhoneNumber());
         customer.setNationalId(request.getNationalId());
         customer.setFullName(request.getFullName());
+        customer.setAddress("Not provided");
         customerRepository.saveAndFlush(customer);
         savedUser.setCustomer(customer);
 
