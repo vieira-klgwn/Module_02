@@ -1,5 +1,6 @@
 package vector.UtilityBillingMS.repositories;
 
+import jakarta.validation.constraints.NotNull;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -23,4 +24,8 @@ public interface TariffRepository extends JpaRepository<Tariff, Long> {
     Optional<Tariff> findTopByUtilityTypeOrderByVersionDesc(MeterType utilityType);
 
     boolean existsByName(String name);
+
+    boolean existsByUtilityTypeAndEffectiveFrom(@NotNull(message = "Utility type is required") MeterType utilityType, @NotNull(message = "Effective from date is required") LocalDate effectiveFrom);
+
+
 }

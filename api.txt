@@ -1,0 +1,595 @@
+=========================================================
+UTILITY BILLING MANAGEMENT SYSTEM - API TEST SCRIPT
+=========================================================
+
+EXAM DEMO FLOW
+--------------
+1. Login as Admin
+2. Create Tariffs
+3. Create Customer
+4. Create Meters
+5. Login as Operator
+6. Record Meter Readings
+7. Login as Finance
+8. Generate Bills
+9. Approve Bills
+10. Record Payments
+11. View Notifications
+12. Login as Customer
+13. View Own Bills
+14. View Own Notifications
+15. Demonstrate Validations
+16. Demonstrate Security Restrictions
+17. Demonstrate Stored Procedures / Database Routines
+
+=========================================================
+1. LOGIN AS ADMIN
+=========================================================
+
+POST /api/auth/login
+
+{
+  "email": "admin@utility.com",
+  "password": "Admin123!"
+}
+
+Expected:
+- 200 OK
+- JWT Token Returned
+
+Save token as:
+
+ADMIN_TOKEN
+
+=========================================================
+2. CREATE WATER TARIFF
+=========================================================
+
+POST /api/tariffs
+
+Authorization: Bearer ADMIN_TOKEN
+
+{
+  "name": "WASAC Water Standard 2028",
+  "utilityType": "WATER",
+  "tariffType": "FLAT",
+  "effectiveFrom": "2028-01-01",
+  "vatRate": 18,
+  "fixedServiceCharge": 500,
+  "flatRate": 50
+}
+
+Expected:
+- Tariff Created
+- Version Auto Incremented
+
+=========================================================
+3. CREATE ELECTRICITY TARIFF
+=========================================================
+
+POST /api/tariffs
+
+Authorization: Bearer ADMIN_TOKEN
+
+{
+  "name": "REG Electricity Tiered 2028",
+  "utilityType": "ELECTRICITY",
+  "tariffType": "TIERED",
+  "effectiveFrom": "2028-01-01",
+  "vatRate": 18,
+  "fixedServiceCharge": 1000,
+  "penaltyRate": 5,
+  "tiers": [
+    {
+      "minConsumption": 1,
+      "maxConsumption": 100,
+      "ratePerUnit": 120
+    },
+    {
+      "minConsumption": 100,
+      "ratePerUnit": 180
+    }
+  ]
+}
+
+Expected:
+- Tariff Created
+- Version Auto Incremented
+
+=========================================================
+4. CREATE CUSTOMER
+=========================================================
+
+POST /api/customers
+
+Authorization: Bearer ADMIN_TOKEN
+
+{
+  "fullName": "John Doe",
+  "nationalId": "1199999999999999",
+  "email": "john.doe@gmail.com",
+  "phoneNumber": "0781234567",
+  "address": "Kigali, Kicukiro",
+  "password": "Password123!"
+}
+
+Expected:
+- Customer Created
+- Corresponding User Created
+
+Save:
+
+CUSTOMER_ID
+
+=========================================================
+5. CREATE WATER METER
+=========================================================
+
+POST /api/meters
+
+Authorization: Bearer ADMIN_TOKEN
+
+{
+  "meterNumber": "WTR001",
+  "meterType": "WATER",
+  "installationDate": "2026-01-01",
+  "customerId": CUSTOMER_ID
+}
+
+Expected:
+- Meter Created
+
+Save:
+
+WATER_METER_ID
+
+=========================================================
+6. CREATE ELECTRICITY METER
+=========================================================
+
+POST /api/meters
+
+Authorization: Bearer ADMIN_TOKEN
+
+{
+  "meterNumber": "ELE001",
+  "meterType": "ELECTRICITY",
+  "installationDate": "2026-01-01",
+  "customerId": CUSTOMER_ID
+}
+
+Expected:
+- Meter Created
+
+Save:
+
+ELECTRICITY_METER_ID
+
+=========================================================
+7. LOGIN AS OPERATOR
+=========================================================
+
+POST /api/auth/login
+
+{
+  "email": "operator@utility.com",
+  "password": "Operator123!"
+}
+
+Expected:
+- JWT Token
+
+Save:
+
+OPERATOR_TOKEN
+
+=========================================================
+8. CREATE WATER READING
+=========================================================
+
+POST /api/meter-readings
+
+Authorization: Bearer OPERATOR_TOKEN
+
+{
+  "meterId": WATER_METER_ID,
+  "previousReading": 100,
+  "currentReading": 150,
+  "readingDate": "2026-06-01"
+}
+
+Expected:
+- Reading Created
+- Consumption = 50
+
+Save:
+
+WATER_READING_ID
+
+=========================================================
+9. CREATE ELECTRICITY READING
+=========================================================
+
+POST /api/meter-readings
+
+Authorization: Bearer OPERATOR_TOKEN
+
+{
+  "meterId": ELECTRICITY_METER_ID,
+  "previousReading": 100,
+  "currentReading": 250,
+  "readingDate": "2026-06-01"
+}
+
+Expected:
+- Reading Created
+- Consumption = 150
+
+Save:
+
+ELECTRICITY_READING_ID
+
+=========================================================
+10. LOGIN AS FINANCE
+=========================================================
+
+POST /api/auth/login
+
+{
+  "email": "finance@utility.com",
+  "password": "Finance123!"
+}
+
+Expected:
+- JWT Token
+
+Save:
+
+FINANCE_TOKEN
+
+=========================================================
+11. GENERATE WATER BILL
+=========================================================
+
+POST /api/bills
+
+Authorization: Bearer FINANCE_TOKEN
+
+{
+  "meterReadingId": WATER_READING_ID,
+  "applyPenalty": false
+}
+
+Expected:
+- Bill Created
+- Notification Created
+
+Save:
+
+WATER_BILL_ID
+
+=========================================================
+12. APPROVE WATER BILL
+=========================================================
+
+PUT /api/bills/{WATER_BILL_ID}/approve
+
+Authorization: Bearer FINANCE_TOKEN
+
+Expected:
+- Status = APPROVED
+
+=========================================================
+13. GENERATE ELECTRICITY BILL
+=========================================================
+
+POST /api/bills/generate
+
+Authorization: Bearer FINANCE_TOKEN
+
+{
+  "meterReadingId": ELECTRICITY_READING_ID,
+  "applyPenalty": false
+}
+
+Expected:
+- Bill Created
+
+Save:
+
+ELECTRICITY_BILL_ID
+
+=========================================================
+14. APPROVE ELECTRICITY BILL
+=========================================================
+
+PUT /api/bills/{ELECTRICITY_BILL_ID}/approve
+
+Authorization: Bearer FINANCE_TOKEN
+
+Expected:
+- Status = APPROVED
+
+=========================================================
+15. PARTIAL PAYMENT
+=========================================================
+
+POST /api/payments
+
+Authorization: Bearer FINANCE_TOKEN
+
+{
+  "billReference": "BILL_REFERENCE_HERE",
+  "amountPaid": 5000,
+  "paymentMethod": "MOBILE_MONEY",
+  "paymentDate": "2026-06-07"
+}
+
+Expected:
+- Remaining Balance Reduced
+- Bill Still APPROVED
+
+=========================================================
+16. FULL PAYMENT
+=========================================================
+
+POST /api/payments
+
+Authorization: Bearer FINANCE_TOKEN
+
+{
+  "billReference": "BILL_REFERENCE_HERE",
+  "amountPaid": "REMAINING_BALANCE",
+  "paymentMethod": "BANK_TRANSFER",
+  "paymentDate": "2026-06-07"
+}
+
+Expected:
+- Bill Status = PAID
+- Remaining Balance = 0
+- Payment Notification Generated
+
+=========================================================
+17. VIEW NOTIFICATIONS
+=========================================================
+
+GET /api/notifications
+
+Authorization: Bearer FINANCE_TOKEN
+
+Expected:
+- Bill Notification
+- Payment Notification
+
+=========================================================
+18. LOGIN AS CUSTOMER
+=========================================================
+
+POST /api/auth/login
+
+{
+  "email": "john.doe@gmail.com",
+  "password": "Password123!"
+}
+
+Expected:
+- JWT Token
+
+Save:
+
+CUSTOMER_TOKEN
+
+=========================================================
+19. VIEW OWN BILLS
+=========================================================
+
+GET /api/bills/my-bills
+
+Authorization: Bearer CUSTOMER_TOKEN
+
+Expected:
+- Only Customer Bills Returned
+
+=========================================================
+20. VIEW OWN NOTIFICATIONS
+=========================================================
+
+GET /api/notifications
+
+Authorization: Bearer CUSTOMER_TOKEN
+
+Expected:
+- Only Customer Notifications Returned
+
+=========================================================
+VALIDATION TESTS
+=========================================================
+
+CUSTOMER VALIDATIONS
+
+1. Missing National ID
+
+Expected:
+400 Bad Request
+
+---------------------------------------------------------
+
+2. Invalid National ID
+
+{
+  "nationalId": "ABC123"
+}
+
+Expected:
+400 Bad Request
+
+---------------------------------------------------------
+
+3. Duplicate National ID
+
+Expected:
+400 Bad Request
+
+---------------------------------------------------------
+
+4. Duplicate Email
+
+Expected:
+400 Bad Request
+
+---------------------------------------------------------
+
+5. Missing Address
+
+Expected:
+400 Bad Request
+
+=========================================================
+METER VALIDATIONS
+=========================================================
+
+1. Duplicate Meter Number
+
+Expected:
+400 Bad Request
+
+---------------------------------------------------------
+
+2. Future Installation Date
+
+{
+  "installationDate": "2030-01-01"
+}
+
+Expected:
+400 Bad Request
+
+=========================================================
+READING VALIDATIONS
+=========================================================
+
+1. Current Reading <= Previous Reading
+
+Expected:
+400 Bad Request
+
+---------------------------------------------------------
+
+2. Reading Before Meter Installation Date
+
+Expected:
+400 Bad Request
+
+---------------------------------------------------------
+
+3. Duplicate Reading Same Month
+
+Expected:
+400 Bad Request
+
+=========================================================
+BILL VALIDATIONS
+=========================================================
+
+1. Generate Bill Twice For Same Reading
+
+Expected:
+400 Bad Request
+
+Message:
+Bill already exists for this meter reading
+
+---------------------------------------------------------
+
+2. Inactive Customer
+
+Expected:
+400 Bad Request
+
+=========================================================
+PAYMENT VALIDATIONS
+=========================================================
+
+1. Overpayment
+
+Expected:
+400 Bad Request
+
+---------------------------------------------------------
+
+2. Payment Before Bill Date
+
+Expected:
+400 Bad Request
+
+---------------------------------------------------------
+
+3. Payment For Unapproved Bill
+
+Expected:
+400 Bad Request
+
+=========================================================
+SECURITY TESTS
+=========================================================
+
+1. Customer Access Another Customer Bill
+
+Expected:
+403 Forbidden
+
+---------------------------------------------------------
+
+2. Customer Access Another Customer Notification
+
+Expected:
+403 Forbidden
+
+---------------------------------------------------------
+
+3. Customer Access Another Customer Payment
+
+Expected:
+403 Forbidden
+
+=========================================================
+DATABASE ROUTINE TESTS
+=========================================================
+
+After Bill Generation:
+
+SELECT *
+FROM notifications
+ORDER BY id DESC;
+
+Expected:
+Bill Notification Exists
+
+---------------------------------------------------------
+
+After Full Payment:
+
+SELECT bill_reference,
+       status,
+       remaining_balance
+FROM bills;
+
+Expected:
+
+Status = PAID
+Remaining Balance = 0
+
+---------------------------------------------------------
+
+Verify Payment Notification
+
+SELECT *
+FROM notifications
+ORDER BY id DESC;
+
+Expected:
+Payment Notification Exists
+
+=========================================================
+END OF EXAM DEMONSTRATION
+=========================================================

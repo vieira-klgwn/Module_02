@@ -23,6 +23,7 @@ public class TariffService {
 
     @Transactional
     public Tariff create(TariffRequest request) {
+
         validateTariffRequest(request);
 
         if (tariffRepository.existsByName(request.getName())) {
@@ -78,6 +79,16 @@ public class TariffService {
     }
 
     private void validateTariffRequest(TariffRequest request) {
+
+        if (tariffRepository.existsByUtilityTypeAndEffectiveFrom(
+                request.getUtilityType(),
+                request.getEffectiveFrom()
+        )) {
+            throw new BusinessException(
+                    "A tariff already exists for this utility type on this effective date"
+            );
+        }
+
         if (request.getVatRate().compareTo(BigDecimal.ZERO) < 0
                 || request.getFixedServiceCharge().compareTo(BigDecimal.ZERO) < 0) {
             throw new BusinessException("VAT and fixed charges cannot be negative");

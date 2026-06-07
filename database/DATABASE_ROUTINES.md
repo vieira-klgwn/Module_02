@@ -105,9 +105,16 @@ Your June/2024 utility bill of 23305 FRW has been successfully processed
 
 ---
 
-## Testing the stored procedure (full payment)
 
+## Testing the stored procedure (full payment)
 ```sql
+
+--Check the ID of the bill
+SELECT id, bill_reference
+FROM bills
+WHERE bill_reference = 'BILL-DBTEST01';
+
+
 -- Approve the bill first if needed (app normally does this)
 UPDATE bills SET status = 'APPROVED' WHERE bill_reference = 'BILL-DBTEST01';
 
